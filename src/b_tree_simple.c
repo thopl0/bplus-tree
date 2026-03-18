@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -36,7 +37,7 @@ void list_node(Node *node, int order, int level, int depth);
 void list_tree(Tree *tree);
 
 void insert_item_into_array_index(int index, void *item, void **arr, int arr_len);
-void find_index_and_insert_item_into_array(void *item, void **arr, int arr_len);
+int find_index_and_insert_item_into_array(void *item, void **arr, int arr_len);
 
 void insert_child_to_node(Node *child, Node *parent, Tree *tree);
 void remove_child_from_node(Node *child, Node *node, Tree *tree);
@@ -46,6 +47,7 @@ void insert_key_to_node(void *key, Node *node, Tree *tree);
 void insert_record_to_leaf(void *key, void *value, Node *node, Tree *tree);
 void insert_record_to_tree(void *key, void *value, Tree *tree);
 
+void *search(void *key, Tree *tree);
 
 
 Node *create_node(bool is_leaf, Node *parent, int order) {
@@ -72,19 +74,22 @@ void list_node(Node *node, int order, int level, int depth) {
     // Top border
     printf("%*s+", indent, "");
     for (int slot = 0; slot < node->keys_count; slot++)
-        printf("-----+");
+        printf(node->is_leaf ? "----------+" : "-----+");
     printf("\n");
 
-    // Keys row
     printf("%*s|", indent, "");
-    for (int slot = 0; slot < node->keys_count; slot++)
-        printf(" %3d |", *(int *)node->keys[slot]);
+    for (int slot = 0; slot < node->keys_count; slot++) {
+        if (node->is_leaf)
+            printf(" %3d -> %3d |", *(int *)node->keys[slot], *(int *)node->values[slot]);
+        else
+            printf(" %3d |", *(int *)node->keys[slot]);
+    }
     printf("\n");
 
     // Bottom border
     printf("%*s+", indent, "");
     for (int slot = 0; slot < node->keys_count; slot++)
-        printf("-----+");
+        printf(node->is_leaf ? "----------+" : "-----+");
     printf("\n");
 
     // Node info
@@ -104,14 +109,6 @@ void list_node(Node *node, int order, int level, int depth) {
 }
 
 
-
-void list_tree(Tree *tree) {
-  list_node(tree->root, tree->order, 0, INT_MAX);
-}
-
-// array helpers
-//
-
 void insert_item_into_array_index(int index, void *item, void **arr, int arr_len) {
   void *tmp = NULL;
   if(arr[index] == NULL) {arr[index] = item;}
@@ -124,13 +121,15 @@ void insert_item_into_array_index(int index, void *item, void **arr, int arr_len
   }
 }
 
-void find_index_and_insert_item_into_array(void *item, void **arr, int arr_len) {
+int find_index_and_insert_item_into_array(void *item, void **arr, int arr_len) {
   int i = 0; 
   for(i=0; i<arr_len; i++) {
     if(arr[i] == NULL) break;
     else if(*(int*)(arr[i]) > *(int*)(item)) break;
   }
   insert_item_into_array_index(i, item, arr, arr_len);
+
+  return i;
 }
 
 
@@ -278,8 +277,8 @@ void insert_record_to_leaf(void *key, void *value, Node *node, Tree *tree) {
   
   if(node->keys_count == tree->order-1) {
     // if(node->parent) list_node(node->parent, tree->order, 0, 1);
-    find_index_and_insert_item_into_array(key, node->keys, tree->order);
-    find_index_and_insert_item_into_array(value, node->values, tree->order);
+    int key_index = find_index_and_insert_item_into_array(key, node->keys, tree->order);
+    insert_item_into_array_index(key_index, value, node->values, tree->order);
     node->keys_count += 1;
 
 
@@ -335,8 +334,8 @@ void insert_record_to_leaf(void *key, void *value, Node *node, Tree *tree) {
   } 
   else {
     // printf("inserting...\n");
-    find_index_and_insert_item_into_array(key, node->keys, tree->order);
-    if(node->is_leaf) find_index_and_insert_item_into_array(value, node->values, tree->order);
+    int key_index = find_index_and_insert_item_into_array(key, node->keys, tree->order);
+    if(node->is_leaf) insert_item_into_array_index(key_index, value, node->values, tree->order);
     node->keys_count += 1;
   }
 }
@@ -347,6 +346,37 @@ void insert_record_to_tree(void *key, void *value, Tree *tree) {
   // printf("found insertion node\n");
 
   insert_record_to_leaf(key, value, insertion_node, tree);
+}
+
+
+void *search(void *key, Tree *tree) {
+  Node *node = find_insertion_node(key, tree);
+
+  list_node(node, tree->order, 0, 1);
+
+  for(int i=0; i<node->keys_count; i++) {
+    if(*(int*)node->keys[i] == *(int*)key) return node->values[i]; 
+  }
+  return NULL;
+}
+
+void range_query(Tree *tree, void *start_key, void *end_key) {
+  printf("Getting Values from %d to %d", *(int*)start_key, *(int*)end_key);
+
+  Node *node = find_insertion_node(start_key, tree);
+  
+  while(node->next) {
+    for(int i=0; i<node->keys_count; i++) {
+      if(*(int*)node->keys[i] >= *(int*)start_key && *(int*)node->keys[i] <= *(int*)end_key) {
+        printf("Key: %d, Value: %d\n", *(int*)node->keys[i], *(int*)node->values[i]);
+      }
+    }
+    node = node->next;
+  }
+}
+
+void list_tree(Tree *tree) {
+  list_node(tree->root, tree->order, 0, INT_MAX);
 }
 
 
@@ -363,7 +393,7 @@ int main(int argc, char *argv[])
 
   
 
-  for(int i=0; i<10; i++) {
+  for(int i=0; i<22; i++) {
     int *key_p = malloc(sizeof(int));
     int *value_p = malloc(sizeof(int));
     *key_p = keys[i];
@@ -373,10 +403,10 @@ int main(int argc, char *argv[])
 
     insert_record_to_tree(key_p, value_p, tree);
  
-    // printf("\n\n-------------------\n");
-    // printf("ROOT KEY: %d, CHILDREN: %d\n", tree->root->keys_count, tree->root->children_count);
-    // list_tree(tree);
-    // printf("\n-------------------\n\n");
+    printf("\n\n-------------------\n");
+    printf("ROOT KEY: %d, CHILDREN: %d\n", tree->root->keys_count, tree->root->children_count);
+    list_tree(tree);
+    printf("\n-------------------\n\n");
     // printf("\n\n-------------------\n");
     // printf("ROOT KEY: %d, CHILDREN: %d\n", tree->root->keys_count, tree->root->children_count);
     // list_node(tree->root, tree->order, 0, 1);
@@ -384,15 +414,21 @@ int main(int argc, char *argv[])
   }
 
   int *test_key = malloc(sizeof(int));
-  *test_key = 1;
+  *test_key = 2;
+  int *test_key2 = malloc(sizeof(int));
+  *test_key2 = 20;
 
-  Node *test = find_insertion_node(test_key, tree);
-  list_node(test, tree->order, 0, 1);
-  Node *next_node = test->next;
-  while (next_node != NULL) {
-    list_node(next_node, tree->order, 0, 1);
-    next_node = next_node->next;
-  }
+  // Node *test = find_insertion_node(test_key, tree);
+  // list_node(test, tree->order, 0, 1);
+  // Node *next_node = test->next;
+  // while (next_node != NULL) {
+  //   list_node(next_node, tree->order, 0, 1);
+  //   next_node = next_node->next;
+  // }
+
+  printf("Searched Key: %d, found value: %d\n", *(int*)test_key, *(int*)search(test_key, tree));
+
+  range_query(tree, test_key, test_key2);
   
 
 
