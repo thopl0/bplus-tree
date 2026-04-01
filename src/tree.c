@@ -1,7 +1,7 @@
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <time.h>
 #include "arena_alloc.h"
 #include "tree.h"
@@ -47,6 +47,10 @@ Node *create_node(Arena *arena, bool is_leaf, Node *parent, int order) {
   void **keys = arena_alloc(arena, order * sizeof(void*));
   void **values = arena_alloc(arena, order * sizeof(void*));
   Node **children = arena_alloc(arena, (order + 1) * sizeof(Node*));
+
+  memset(keys, 0, order * sizeof(void*)); 
+  memset(values, 0, order * sizeof(void*));
+  memset(children, 0, (order + 1) * sizeof(void*));
 
   node->is_leaf = is_leaf;
   node->parent = parent;
@@ -104,7 +108,7 @@ void list_node(Node *node, int order, int level, int depth) {
 }
 
 void list_tree(Tree *tree) {
-  // list_node(tree->root, tree->order, 0, INT_MAX);
+  list_node(tree->root, tree->order, 0, INT_MAX);
 }
 
 
@@ -217,7 +221,7 @@ void remove_child_from_node(Node *child, Node *node, Tree *tree) {
 void split_children(Node *original_parent, Node *first_parent, Node *second_parent, Tree *tree){
   Node **children = original_parent->children;
   int children_count = original_parent->children_count;
-  int mid = children_count / 2;
+  int mid = (children_count - 1) / 2;
 
   for(int i=0; i<original_parent->keys_count; i++) {
     if(i<mid) {

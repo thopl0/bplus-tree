@@ -23,6 +23,7 @@ ArenaChunk *arena_init_chunk(Arena *arena) {
   chunk->memory = memory;
   chunk->size = arena->default_chunk_memory_size;
   chunk->used = 0;
+  chunk->next = NULL;
 
   return chunk;
 }
@@ -34,9 +35,12 @@ void *arena_alloc(Arena *arena, size_t bytes) {
     arena->current = new_chunk;
   }
 
+  void *ptr = arena->current->used + arena->current->memory;
+
   arena->current->used += bytes;
 
-  return arena->current->memory + arena->current->used - bytes;
+  return ptr;
+
 }
 
 void arena_destroy(Arena *arena) {
