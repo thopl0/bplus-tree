@@ -1,11 +1,8 @@
 CC=gcc
 CFLAGS=-std=gnu11 -g
 
-b_tree:
-	$(CC) $(CFLAGS) src/b_tree.c -o build/ubuntu/b_tree 
+tree:
+	$(CC) $(CFLAGS) src/tree.c src/arena_alloc.c -o build/tree
 
-b_tree_simple:
-	$(CC) $(CFLAGS) src/tree.c src/arena_alloc.c -o build/ubuntu/tree
-
-run: b_tree_simple
-	./build/ubuntu/tree
+run: tree
+	./build/tree
