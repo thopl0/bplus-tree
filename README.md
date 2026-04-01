@@ -36,7 +36,7 @@ tests/
 ## Build
 
 ```bash
-make b_tree_simple
+make tree
 ```
 
 Requires GCC. Uses `-std=gnu11`.
